@@ -44,7 +44,7 @@ function deploy() {
   const latest = command(gh,['api',`repos/${repo}/commits/master`,'--jq','.sha']).trim();
   if (latest !== run.headSha) { log('Latest master is still waiting for successful CI'); return; }
   const release = path.join(stateDir,'releases',run.headSha);
-  const bundle = path.join(stateDir,'bundles',run.headSha);
+  const bundle = path.join(stateDir,'bundles',run.headSha,String(Date.now()));
   fs.mkdirSync(release,{recursive:true});
   fs.mkdirSync(bundle,{recursive:true});
   log(`Deploying ${run.headSha} from verified run ${run.databaseId}`);
