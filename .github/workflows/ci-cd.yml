@@ -75,6 +75,7 @@ jobs:
         run: |
           mkdir -p dist
           cp compose.yaml .env.example dist/
+          git archive --format=zip --output=dist/source.zip HEAD
           echo 'SHOP_IMAGE=ghcr.io/asartem9855/ptlab2:${{ github.sha }}' > dist/image.env
       - uses: actions/upload-artifact@v4
         with:

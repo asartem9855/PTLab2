@@ -11,3 +11,5 @@ coverage.xml
 staticfiles
 *.log
 .idea
+.deploy
+docs/*.png

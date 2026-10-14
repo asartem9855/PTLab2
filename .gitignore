@@ -13,3 +13,4 @@ htmlcov/
 *.log
 .local-credentials.txt
 dist/
+.deploy/
