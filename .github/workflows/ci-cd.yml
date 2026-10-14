@@ -1,0 +1,84 @@
+name: Labs 2-3 - tests and delivery
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: shop-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ['3.11', '3.12', '3.13']
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: stationery
+          POSTGRES_USER: stationery
+          POSTGRES_PASSWORD: ci-only-password
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U stationery -d stationery"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+    env:
+      POSTGRES_HOST: 127.0.0.1
+      POSTGRES_DB: stationery
+      POSTGRES_USER: stationery
+      POSTGRES_PASSWORD: ci-only-password
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+      - run: python -m pip install -r requirements-dev.txt
+      - run: python -m pycodestyle shop tplab2 --exclude=migrations
+      - run: python manage.py check
+      - run: python manage.py makemigrations --check --dry-run
+      - run: python manage.py migrate --noinput
+      - run: python manage.py collectstatic --noinput
+      - run: python -m coverage run manage.py test shop.tests --verbosity 2
+      - run: python -m coverage report && python -m coverage html && python -m coverage xml
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: lab3-coverage-${{ matrix.python }}
+          path: |
+            htmlcov/
+            coverage.xml
+  deliver:
+    needs: test
+    if: github.ref == 'refs/heads/master' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build tested application
+        run: docker build -t ghcr.io/asartem9855/ptlab2:${{ github.sha }} .
+      - name: Authenticate to GitHub Container Registry
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$GH_TOKEN" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+      - name: Publish immutable and latest tags
+        run: |
+          docker push ghcr.io/asartem9855/ptlab2:${{ github.sha }}
+          docker tag ghcr.io/asartem9855/ptlab2:${{ github.sha }} ghcr.io/asartem9855/ptlab2:latest
+          docker push ghcr.io/asartem9855/ptlab2:latest
+      - name: Assemble deployment bundle
+        run: |
+          mkdir -p dist
+          cp compose.yaml .env.example dist/
+          git archive --format=zip --output=dist/source.zip HEAD
+          echo 'SHOP_IMAGE=ghcr.io/asartem9855/ptlab2:${{ github.sha }}' > dist/image.env
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lab23-deployment
+          path: dist/
+          include-hidden-files: true

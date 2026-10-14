@@ -1,15 +1,42 @@
 - model: shop.product
   pk: 1
   fields:
-    name: Стол
-    price: 2000
+    name: Блокнот «Идеи»
+    price: '390.00'
+    category: Блокноты
+    description: 80 листов в точку, мягкая обложка и место для новых идей.
 - model: shop.product
   pk: 2
   fields:
-    name: Стул
-    price: 1000
+    name: Ручка гелевая
+    price: '120.00'
+    category: Письмо
+    description: Тонкая линия 0,5 мм. Чёрные чернила для ясных мыслей.
 - model: shop.product
   pk: 3
   fields:
-    name: Табурет
-    price: 500
+    name: Карандаши, набор 12 шт.
+    price: '480.00'
+    category: Рисование
+    description: Двенадцать спокойных оттенков для ярких открытий.
+- model: shop.product
+  pk: 4
+  fields:
+    name: Тетрадь А5, 96 листов
+    price: '185.50'
+    category: Тетради
+    description: Плотная бумага в клетку. Для лекций, заметок и планов.
+- model: shop.product
+  pk: 5
+  fields:
+    name: Маркеры, набор 4 шт.
+    price: '299.90'
+    category: Письмо
+    description: Пастельные текстовыделители — главное всегда на виду.
+- model: shop.product
+  pk: 6
+  fields:
+    name: Папка для документов
+    price: '210.00'
+    category: Хранение
+    description: Формат А4, надёжная застёжка и порядок в документах.
