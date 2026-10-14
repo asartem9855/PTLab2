@@ -1,3 +1,15 @@
 __pycache__/
 .DS_Store
 .env
+.env.*
+!.env.example
+.venv/
+.idea/
+*.sqlite3
+staticfiles/
+.coverage
+coverage.xml
+htmlcov/
+*.log
+.local-credentials.txt
+dist/
