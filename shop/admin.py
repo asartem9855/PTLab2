@@ -1,10 +1,10 @@
 from django.contrib import admin
 
-from .models import Customer, Product, Purchase
+from .models import Product, Purchase
 
 admin.site.site_header = "Линия · управление магазином"
 admin.site.site_title = "Линия"
-admin.site.index_title = "Товары, покупатели и заказы"
+admin.site.index_title = "Товары и заказы"
 
 
 @admin.register(Product)
@@ -14,12 +14,6 @@ class ProductAdmin(admin.ModelAdmin):
     search_fields = ("name",)
 
 
-@admin.register(Customer)
-class CustomerAdmin(admin.ModelAdmin):
-    list_display = ("user", "birth_date")
-    search_fields = ("user__username", "user__first_name")
-
-
 @admin.register(Purchase)
 class PurchaseAdmin(admin.ModelAdmin):
     list_display = ("id", "person", "product", "quantity",
@@ -27,7 +21,7 @@ class PurchaseAdmin(admin.ModelAdmin):
     list_filter = ("discount_percent", "date")
     search_fields = ("person", "product__name")
     readonly_fields = (
-        "product", "customer", "person", "address", "date", "quantity",
+        "product", "person", "address", "date", "quantity",
         "birth_date", "unit_price", "discount_percent", "total_price",
     )
 

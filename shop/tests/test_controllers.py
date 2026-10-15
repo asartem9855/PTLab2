@@ -8,7 +8,7 @@ from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
-from shop.models import Customer, Product, Purchase
+from shop.models import Product, Purchase
 
 
 @override_settings(STORAGES={
@@ -19,10 +19,6 @@ from shop.models import Customer, Product, Purchase
 class ControllerTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.user = User.objects.create_user("buyer", password="Strong!Test42")
-        cls.customer = Customer.objects.create(
-            user=cls.user, birth_date=date(2000, 10, 14)
-        )
         cls.product = Product.objects.create(name="Ручка", price="120.00")
         cls.hidden = Product.objects.create(
             name="Архив", price="50.00", active=False
@@ -31,58 +27,68 @@ class ControllerTests(TestCase):
     def setUp(self):
         self.buy_url = reverse("buy", args=[self.product.pk])
         self.data = {"person": "Иван", "address": "Университет, 1",
-                     "quantity": 2, "confirm": "1"}
+                     "birth_date": "2000-10-14", "quantity": 2, "confirm": "1"}
 
-    def test_catalog_and_search(self):
+    def test_catalog(self):
         response = self.client.get(reverse("index"))
         self.assertContains(response, "Ручка")
         self.assertNotContains(response, "Архив")
-        response = self.client.get(reverse("index"), {"q": "Нет такого"})
+        self.assertNotContains(response, "<img")
+        self.assertContains(response, "120,00")
+        Product.objects.all().update(active=False)
+        response = self.client.get(reverse("index"))
         self.assertContains(response, "Товары не найдены")
         self.assertEqual(self.client.post(reverse("index")).status_code, 405)
 
-    @patch("shop.models.timezone.localdate", return_value=date(2026, 10, 14))
-    def test_birthday_prices_in_catalog(self, _):
-        self.client.force_login(self.user)
-        response = self.client.get(reverse("index"))
-        self.assertContains(response, "108,00")
-        self.assertTrue(response.context["birthday"])
-
-    def test_anonymous_purchase_redirects_to_login(self):
-        self.assertRedirects(
-            self.client.get(self.buy_url),
-            reverse("login") + "?next=" + self.buy_url,
-        )
+    def test_purchase_without_account(self):
+        response = self.client.get(self.buy_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'name="birth_date"')
+        for url in ["/register/", "/login/", "/logout/", "/orders/"]:
+            with self.subTest(url=url):
+                self.assertEqual(self.client.get(url).status_code, 404)
 
     @patch("shop.models.timezone.localdate", return_value=date(2026, 10, 14))
-    def test_order_ignores_price_and_date_tampering(self, _):
-        self.client.force_login(self.user)
+    def test_order_ignores_price_tampering(self, _):
         self.data.update(total_price="0.01", discount_percent="100",
-                         birth_date="1900-01-01", product=self.hidden.pk)
+                         product=self.hidden.pk)
         response = self.client.post(self.buy_url, self.data)
         purchase = Purchase.objects.get()
         self.assertEqual(purchase.total_price, Decimal("216.00"))
         self.assertEqual(purchase.product, self.product)
+        self.assertEqual(purchase.birth_date, date(2000, 10, 14))
         self.assertRedirects(response, reverse("receipt", args=[purchase.pk]))
         self.assertContains(self.client.get(response.url), "216,00")
+        self.client.get(response.url)
+        self.assertEqual(Purchase.objects.count(), 1)
 
-    def test_preview_does_not_create_order(self):
-        self.client.force_login(self.user)
-        self.assertEqual(self.client.get(self.buy_url).status_code, 200)
+    @patch("shop.models.timezone.localdate", return_value=date(2026, 10, 14))
+    def test_preview_does_not_create_order(self, _):
         self.data.pop("confirm")
         response = self.client.post(self.buy_url, self.data)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.context["quote"]["subtotal"], Decimal("240"))
+        self.assertEqual(response.context["quote"]["total"], Decimal("216"))
         self.assertFalse(Purchase.objects.exists())
 
+    @patch("shop.models.timezone.localdate", return_value=date(2026, 10, 15))
+    def test_regular_purchase(self, _):
+        self.client.post(self.buy_url, self.data)
+        self.assertEqual(Purchase.objects.get().total_price, Decimal("240"))
+
     def test_invalid_form_and_product(self):
-        self.client.force_login(self.user)
-        for change in [{"quantity": 0}, {"quantity": 100}, {"person": " "},
-                       {"address": ""}, {"quantity": "abc"}]:
+        for change in [
+            {"quantity": 0}, {"quantity": 100}, {"person": " "},
+            {"address": ""}, {"quantity": "abc"}, {"birth_date": ""},
+            {"birth_date": "not-date"}, {"birth_date": "1899-01-01"},
+            {"birth_date": str(timezone.localdate() + timedelta(days=1))},
+        ]:
             with self.subTest(change=change):
                 response = self.client.post(self.buy_url, self.data | change)
                 self.assertEqual(response.status_code, 200)
                 self.assertTrue(response.context["form"].errors)
+        self.assertTrue(self.client.post(
+            self.buy_url, {}
+        ).context["form"].errors)
         self.assertFalse(Purchase.objects.exists())
         for pk in [self.hidden.pk, 99999]:
             self.assertEqual(self.client.get(
@@ -92,78 +98,31 @@ class ControllerTests(TestCase):
     @patch("shop.controllers.Purchase.place",
            side_effect=ValidationError("Товар больше не продаётся"))
     def test_purchase_error_is_shown(self, _):
-        self.client.force_login(self.user)
         response = self.client.post(self.buy_url, self.data)
         self.assertContains(response, "Товар больше не продаётся")
 
-    def test_orders_are_private_and_escaped(self):
-        self.client.force_login(self.user)
+    def test_receipts_are_private_and_escaped(self):
         self.data["person"] = "<script>alert(1)</script>"
         self.client.post(self.buy_url, self.data)
         order = Purchase.objects.get()
-        response = self.client.get(reverse("receipt", args=[order.pk]))
+        url = reverse("receipt", args=[order.pk])
+        response = self.client.get(url)
         self.assertContains(response, "&lt;script&gt;")
         self.assertNotContains(response, "<script>alert")
-        self.assertContains(self.client.get(reverse("orders")), "Ручка")
-        other = User.objects.create_user("other")
-        self.client.force_login(other)
-        self.assertEqual(self.client.get(
-            reverse("receipt", args=[order.pk])
-        ).status_code, 404)
-        self.assertContains(self.client.get(reverse("orders")),
-                            "Здесь появятся ваши заказы")
+        self.assertEqual(Client().get(url).status_code, 404)
+        self.client.post(self.buy_url, self.data)
+        self.assertEqual(self.client.get(url).status_code, 200)
 
-    def test_user_without_customer_profile(self):
-        user = User.objects.create_user("no-profile")
-        self.client.force_login(user)
-        self.assertEqual(self.client.get(self.buy_url).status_code, 403)
-        self.assertEqual(self.client.get(reverse("index")).status_code, 200)
-
-    def registration_data(self):
-        return {"username": "newbuyer", "first_name": "Анна",
-                "birth_date": "2000-05-15", "password1": "Strong!Test42",
-                "password2": "Strong!Test42"}
-
-    def test_registration_creates_profile_and_login(self):
-        self.assertEqual(self.client.get(reverse("register")).status_code, 200)
-        response = self.client.post(reverse("register"),
-                                    self.registration_data())
-        self.assertRedirects(response, reverse("index"))
-        user = User.objects.get(username="newbuyer")
-        self.assertTrue(user.check_password("Strong!Test42"))
-        self.assertEqual(user.customer.birth_date, date(2000, 5, 15))
-        self.assertRedirects(self.client.get(reverse("register")),
-                             reverse("index"))
-
-    def test_registration_validation(self):
-        for change in [
-            {"birth_date": str(timezone.localdate() + timedelta(days=1))},
-            {"birth_date": "1899-01-01"}, {"birth_date": "not-date"},
-            {"username": "buyer"}, {"password2": "different"},
-        ]:
-            with self.subTest(change=change):
-                response = self.client.post(
-                    reverse("register"), self.registration_data() | change
-                )
-                self.assertTrue(response.context["form"].errors)
-        self.assertFalse(User.objects.filter(username="newbuyer").exists())
-
-    def test_login_logout_and_csrf(self):
-        response = self.client.post(reverse("login"), {
-            "username": "buyer", "password": "Strong!Test42",
-        })
-        self.assertRedirects(response, reverse("index"))
-        self.assertEqual(self.client.get(reverse("logout")).status_code, 405)
-        self.assertRedirects(self.client.post(reverse("logout")),
-                             reverse("index"))
+    def test_csrf(self):
         client = Client(enforce_csrf_checks=True)
-        client.force_login(self.user)
         self.assertEqual(client.post(self.buy_url, self.data).status_code, 403)
+        client.get(self.buy_url)
+        self.data["csrfmiddlewaretoken"] = client.cookies["csrftoken"].value
+        self.assertEqual(client.post(self.buy_url, self.data).status_code, 302)
 
     def test_health_and_admin_permissions(self):
         self.assertEqual(self.client.get(reverse("health")).json(),
                          {"status": "ok"})
-        self.client.force_login(self.user)
         self.assertEqual(self.client.get(reverse("admin:index")).status_code,
                          302)
         admin = User.objects.create_superuser("admin", password="Admin!Test42")
@@ -172,4 +131,7 @@ class ControllerTests(TestCase):
                          200)
         self.assertEqual(self.client.get(
             reverse("admin:shop_purchase_add")
+        ).status_code, 403)
+        self.assertEqual(self.client.get(
+            reverse("admin:shop_purchase_delete", args=[999])
         ).status_code, 403)

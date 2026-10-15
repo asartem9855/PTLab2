@@ -6,7 +6,7 @@ from django.contrib.auth.models import User
 from django.core.management import call_command, CommandError
 from django.test import TestCase
 
-from shop.models import Customer, Product
+from shop.models import Product
 
 
 class BootstrapTests(TestCase):
@@ -16,7 +16,6 @@ class BootstrapTests(TestCase):
     @patch.dict(os.environ, {
         "DJANGO_SUPERUSER_USERNAME": "admin",
         "DJANGO_SUPERUSER_PASSWORD": "Admin!Test42",
-        "DEMO_CUSTOMER_PASSWORD": "Demo!Test42",
     })
     def test_idempotent_and_no_password_reset(self):
         self.run_command()
@@ -28,7 +27,7 @@ class BootstrapTests(TestCase):
         self.assertTrue(admin.is_superuser)
         self.assertTrue(admin.check_password("Changed!Password42"))
         self.assertEqual(Product.objects.count(), 6)
-        self.assertEqual(Customer.objects.count(), 1)
+        self.assertEqual(User.objects.count(), 1)
 
     @patch.dict(os.environ, {
         "DJANGO_SUPERUSER_USERNAME": "existing",
@@ -48,7 +47,7 @@ class BootstrapTests(TestCase):
             self.run_command()
 
     @patch.dict(os.environ, {
-        "DJANGO_SUPERUSER_USERNAME": "", "DEMO_CUSTOMER_PASSWORD": "",
+        "DJANGO_SUPERUSER_USERNAME": "",
     })
     def test_catalog_only(self):
         self.run_command()

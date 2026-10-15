@@ -2,7 +2,6 @@
 from datetime import date
 from decimal import Decimal, ROUND_HALF_UP
 
-from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models, transaction
@@ -23,23 +22,6 @@ def birthday_discount(birth_date, on_date):
     ):
         return 10
     return 0
-
-
-class Customer(models.Model):
-    user = models.OneToOneField(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
-        related_name="customer", verbose_name="Пользователь",
-    )
-    birth_date = models.DateField(
-        "Дата рождения", validators=[validate_birth_date]
-    )
-
-    class Meta:
-        verbose_name = "Покупатель"
-        verbose_name_plural = "Покупатели"
-
-    def __str__(self):
-        return self.user.get_full_name() or self.user.username
 
 
 class Product(models.Model):
@@ -82,10 +64,6 @@ class Purchase(models.Model):
     product = models.ForeignKey(
         Product, on_delete=models.PROTECT, verbose_name="Товар"
     )
-    customer = models.ForeignKey(
-        Customer, on_delete=models.PROTECT, null=True, blank=True,
-        verbose_name="Покупатель",
-    )
     person = models.CharField("Получатель", max_length=200)
     address = models.CharField("Адрес доставки", max_length=200)
     date = models.DateTimeField("Создан", auto_now_add=True)
@@ -93,7 +71,10 @@ class Purchase(models.Model):
         "Количество", default=1,
         validators=[MinValueValidator(1), MaxValueValidator(99)],
     )
-    birth_date = models.DateField("Дата рождения на момент покупки", null=True)
+    birth_date = models.DateField(
+        "Дата рождения на момент покупки", null=True,
+        validators=[validate_birth_date],
+    )
     unit_price = models.DecimalField(
         "Цена за единицу", max_digits=10, decimal_places=2, default=0
     )
@@ -130,15 +111,15 @@ class Purchase(models.Model):
 
     @classmethod
     @transaction.atomic
-    def place(cls, *, product, customer, person, address, quantity):
+    def place(cls, *, product, birth_date, person, address, quantity):
         product = Product.objects.select_for_update().get(pk=product.pk)
         if not product.active:
             raise ValidationError("Этот товар больше не продаётся.")
-        customer.full_clean()
-        quote = product.quote(customer.birth_date, quantity)
+        validate_birth_date(birth_date)
+        quote = product.quote(birth_date, quantity)
         purchase = cls(
-            product=product, customer=customer, person=person, address=address,
-            quantity=quantity, birth_date=customer.birth_date,
+            product=product, person=person, address=address,
+            quantity=quantity, birth_date=birth_date,
             unit_price=product.price,
             discount_percent=quote["discount_percent"],
             total_price=quote["total"],

@@ -79,9 +79,6 @@ STORAGES = {
     },
 }
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-LOGIN_URL = "login"
-LOGIN_REDIRECT_URL = "index"
-LOGOUT_REDIRECT_URL = "index"
 SESSION_COOKIE_HTTPONLY = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 SESSION_COOKIE_SECURE = os.environ.get("DJANGO_HTTPS", "0") == "1"

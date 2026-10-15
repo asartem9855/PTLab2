@@ -1,1 +1,32 @@
-{% extends 'shop/base.html' %}{% block title %}Оформление заказа — Линия{% endblock %}{% block content %}<a class="back" href="{% url 'index' %}">← В каталог</a><p class="eyebrow">Почти у вас</p><h1 class="page-title">Оформление заказа</h1><div class="checkout"><section class="panel"><h2>{{ product.name }}</h2><p>{{ product.description }}</p><form method="post">{% csrf_token %}{{ form.as_p }}<div class="actions"><button class="button secondary" name="preview" value="1">Пересчитать</button><button class="button" name="confirm" value="1">Оформить заказ →</button></div><p class="hint">При изменении количества нажмите «Пересчитать». Итоговая сумма проверяется при оформлении.</p></form></section><aside class="panel"><p class="eyebrow">Ваш заказ</p><h2>Детали покупки</h2><dl><div><dt>Стоимость товаров</dt><dd>{{ quote.subtotal|floatformat:2 }} ₽</dd></div><div><dt>Скидка {{ quote.discount_percent }}%</dt><dd>−{{ quote.discount_amount|floatformat:2 }} ₽</dd></div><div class="total"><dt>Итого</dt><dd>{{ quote.total|floatformat:2 }} ₽</dd></div></dl>{% if quote.discount_percent %}<p class="notice">С днём рождения! Скидка 10% применена.</p>{% else %}<p class="hint">Скидка действует в день и месяц рождения, указанные в аккаунте.</p>{% endif %}<p class="hint">Это учебный магазин. Оплата не списывается.</p></aside></div>{% endblock %}
+{% extends 'shop/base.html' %}
+{% block title %}Оформление заказа — Линия{% endblock %}
+{% block content %}
+<a href="{% url 'index' %}">← В каталог</a>
+<h1>Оформление заказа</h1>
+<div class="checkout">
+    <section class="panel">
+        <h2>{{ product.name }}</h2>
+        <p class="hint">{{ product.description }}</p>
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <div class="actions">
+                <button class="button" name="preview" value="1">Пересчитать</button>
+                <button class="button" name="confirm" value="1">Оформить заказ</button>
+            </div>
+        </form>
+    </section>
+    <aside class="panel">
+        <h2>Сумма заказа</h2>
+        <dl>
+            <div><dt>Стоимость товаров</dt><dd>{{ quote.subtotal|floatformat:2 }} ₽</dd></div>
+            <div><dt>Скидка {{ quote.discount_percent }}%</dt><dd>{{ quote.discount_amount|floatformat:2 }} ₽</dd></div>
+            <div class="total"><dt>Итого</dt><dd>{{ quote.total|floatformat:2 }} ₽</dd></div>
+        </dl>
+        {% if quote.discount_percent %}
+        <p>С днём рождения! Скидка 10% применена.</p>
+        {% endif %}
+        <p class="hint">Укажите дату рождения и количество, затем нажмите «Пересчитать». При оформлении сумма рассчитывается заново.</p>
+    </aside>
+</div>
+{% endblock %}

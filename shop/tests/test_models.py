@@ -2,14 +2,13 @@ from datetime import date, timedelta
 from decimal import Decimal
 from unittest.mock import patch
 
-from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.db.models.deletion import ProtectedError
 from django.test import SimpleTestCase, TestCase
 from django.utils import timezone
 
-from shop.models import (Customer, Product, Purchase, birthday_discount,
+from shop.models import (Product, Purchase, birthday_discount,
                          validate_birth_date)
 
 
@@ -61,16 +60,12 @@ class BirthdayRuleTests(SimpleTestCase):
 
 class PurchaseTests(TestCase):
     def setUp(self):
-        self.user = User.objects.create_user("buyer")
-        self.customer = Customer.objects.create(
-            user=self.user, birth_date=date(2000, 10, 14)
-        )
         self.product = Product.objects.create(
             name="Ручка", price=Decimal("120.00")
         )
 
     def place(self, **kwargs):
-        data = dict(product=self.product, customer=self.customer,
+        data = dict(product=self.product, birth_date=date(2000, 10, 14),
                     person="Иван", address="Университет, 1", quantity=2)
         data.update(kwargs)
         return Purchase.place(**data)
@@ -84,8 +79,6 @@ class PurchaseTests(TestCase):
         self.assertEqual(order.discount_amount, Decimal("24.00"))
         self.product.price = Decimal("999.00")
         self.product.save()
-        self.customer.birth_date = date(2001, 5, 5)
-        self.customer.save()
         order.refresh_from_db()
         self.assertEqual(order.unit_price, Decimal("120.00"))
         self.assertEqual(order.total_price, Decimal("216.00"))
@@ -111,11 +104,10 @@ class PurchaseTests(TestCase):
                 self.place(**override)
         self.assertEqual(Purchase.objects.count(), 0)
 
-    def test_protect_purchased_product_and_customer(self):
+    def test_protect_purchased_product(self):
         self.place()
-        for entity in [self.product, self.customer]:
-            with self.assertRaises(ProtectedError):
-                entity.delete()
+        with self.assertRaises(ProtectedError):
+            self.product.delete()
 
     def test_current_database_price_is_used(self):
         Product.objects.filter(pk=self.product.pk).update(price="200.00")
@@ -123,9 +115,6 @@ class PurchaseTests(TestCase):
 
     def test_model_names(self):
         self.assertEqual(str(self.product), "Ручка")
-        self.assertEqual(str(self.customer), "buyer")
-        self.user.first_name = "Анна"
-        self.assertEqual(str(self.customer), "Анна")
 
     def test_invalid_price_rejected_by_database(self):
         with self.assertRaises(IntegrityError), transaction.atomic():

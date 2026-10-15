@@ -1,1 +1,18 @@
-{% extends 'shop/base.html' %}{% block title %}Заказ № {{ purchase.pk }} — Линия{% endblock %}{% block content %}<section class="panel receipt"><p class="eyebrow">Всё получилось</p><h1 class="page-title">Спасибо за заказ,<br>{{ purchase.person }}!</h1><p>Заказ № {{ purchase.pk }} · {{ purchase.date|date:'d.m.Y H:i' }}</p><dl><div><dt>Товар</dt><dd>{{ purchase.product.name }}</dd></div><div><dt>Количество</dt><dd>{{ purchase.quantity }}</dd></div><div><dt>Цена за единицу</dt><dd>{{ purchase.unit_price|floatformat:2 }} ₽</dd></div><div><dt>Скидка {{ purchase.discount_percent }}%</dt><dd>−{{ purchase.discount_amount|floatformat:2 }} ₽</dd></div><div class="total"><dt>Итого</dt><dd>{{ purchase.total_price|floatformat:2 }} ₽</dd></div></dl><p>Доставка: {{ purchase.address }}</p><p class="hint">Учебный заказ. Оплата не списывалась.</p><a class="button" href="{% url 'index' %}">Продолжить покупки</a></section>{% endblock %}
+{% extends 'shop/base.html' %}
+{% block title %}Заказ № {{ purchase.pk }} — Линия{% endblock %}
+{% block content %}
+<section class="panel receipt">
+    <h1>Заказ № {{ purchase.pk }} оформлен</h1>
+    <p>{{ purchase.date|date:'d.m.Y H:i' }}</p>
+    <dl>
+        <div><dt>Получатель</dt><dd>{{ purchase.person }}</dd></div>
+        <div><dt>Товар</dt><dd>{{ purchase.product.name }}</dd></div>
+        <div><dt>Количество</dt><dd>{{ purchase.quantity }}</dd></div>
+        <div><dt>Цена за единицу</dt><dd>{{ purchase.unit_price|floatformat:2 }} ₽</dd></div>
+        <div><dt>Скидка {{ purchase.discount_percent }}%</dt><dd>{{ purchase.discount_amount|floatformat:2 }} ₽</dd></div>
+        <div class="total"><dt>Итого</dt><dd>{{ purchase.total_price|floatformat:2 }} ₽</dd></div>
+    </dl>
+    <p>Адрес доставки: {{ purchase.address }}</p>
+    <a class="button" href="{% url 'index' %}">В каталог</a>
+</section>
+{% endblock %}

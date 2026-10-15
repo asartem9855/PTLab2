@@ -4,9 +4,8 @@ import os
 from django.contrib.auth import get_user_model
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
-from django.utils import timezone
 
-from shop.models import Customer, Product
+from shop.models import Product
 
 CATALOG = [
     ("Блокнот «Идеи»", "Блокноты", "390.00",
@@ -25,7 +24,7 @@ CATALOG = [
 
 
 class Command(BaseCommand):
-    help = "Create demo catalog and optional admin/customer from environment"
+    help = "Create demo catalog and optional admin from environment"
 
     @transaction.atomic
     def handle(self, *args, **options):
@@ -48,16 +47,4 @@ class Command(BaseCommand):
                     username=admin_name, password=admin_password,
                     email=os.environ.get("DJANGO_SUPERUSER_EMAIL", ""),
                 )
-        demo_password = os.environ.get("DEMO_CUSTOMER_PASSWORD")
-        if demo_password:
-            user, created = User.objects.get_or_create(
-                username="birthday_demo", defaults={"first_name": "Именинник"}
-            )
-            if created:
-                user.set_password(demo_password)
-                user.save()
-                today = timezone.localdate()
-                Customer.objects.create(
-                    user=user, birth_date=today.replace(year=2000)
-                )
-        self.stdout.write(self.style.SUCCESS("Catalog and accounts are ready"))
+        self.stdout.write(self.style.SUCCESS("Catalog and admin are ready"))

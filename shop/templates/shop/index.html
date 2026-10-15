@@ -1,5 +1,20 @@
-{% extends 'shop/base.html' %}{% block content %}
-<section class="hero"><div><p class="eyebrow">Бумага. Ручки. Вдохновение.</p><h1>Хорошие идеи<br>начинаются с <em>линии.</em></h1><p class="lead">Всё для учёбы, работы и маленьких открытий.<br>Соберите свой набор на каждый день.</p><a class="button" href="#catalog">Перейти к товарам ↗</a></div><div class="paper-scene" aria-hidden="true"><div class="notebook">notes &amp;<br>good ideas<small>ЛИНИЯ / 01</small></div><div class="pencil"></div><div class="paper-label">Планы на сегодня:<br>создать что-то хорошее.</div></div></section>
-<aside class="birthday-banner"><span class="gift">✦</span><div>{% if birthday %}<strong>С днём рождения! Сегодня для вас −10%.</strong><p>Персональная скидка уже учтена в ценах ниже.</p>{% else %}<strong>В ваш день рождения — скидка 10% на любой товар.</strong><p>Укажите дату рождения при регистрации. Скидку рассчитаем автоматически.</p>{% endif %}</div><span class="discount">−10%</span></aside>
-<section id="catalog"><div class="section-heading"><div><p class="eyebrow">Ваш рабочий стол начинается здесь</p><h2>Каталог канцтоваров</h2></div><form class="search" method="get"><input aria-label="Название товара" name="q" value="{{ query }}" placeholder="Найти в каталоге"><button class="button">Найти</button></form></div>
-<div class="products">{% for card in cards %}<article class="card"><div class="product-art {% cycle 'green' 'sand' %}"><span class="category-tag">{{ card.product.category }}</span><div class="stationery-icon" aria-hidden="true">{% cycle '▤' '✎' '▥' '▧' '✐' '▱' %}</div><span class="art-caption">ЛИНИЯ / {{ card.product.id|stringformat:'02d' }}</span></div><div class="card-body"><h3>{{ card.product.name }}</h3><p>{{ card.product.description }}</p><div class="price-row"><div>{% if card.quote.discount_percent %}<s>{{ card.product.price|floatformat:2 }} ₽</s>{% endif %}<strong>{{ card.quote.total|floatformat:2 }} ₽</strong></div><a class="button" href="{% url 'buy' card.product.pk %}">Купить ↗</a></div></div></article>{% empty %}<div class="panel"><h3>Товары не найдены</h3><p>Попробуйте другое название.</p><a href="{% url 'index' %}">Показать весь каталог</a></div>{% endfor %}</div></section>{% endblock %}
+{% extends 'shop/base.html' %}
+{% block content %}
+<h1>Каталог канцтоваров</h1>
+<p class="hint">Выберите товар и оформите заказ. В день рождения действует скидка 10%.</p>
+<div class="products">
+    {% for product in products %}
+    <article class="card">
+        <span class="hint">{{ product.category }}</span>
+        <h2>{{ product.name }}</h2>
+        <p>{{ product.description }}</p>
+        <div class="price-row">
+            <strong>{{ product.price|floatformat:2 }} ₽</strong>
+            <a class="button" href="{% url 'buy' product.pk %}">Купить</a>
+        </div>
+    </article>
+    {% empty %}
+    <p>Товары не найдены.</p>
+    {% endfor %}
+</div>
+{% endblock %}
