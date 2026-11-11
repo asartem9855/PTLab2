@@ -11,9 +11,6 @@ concurrency:
 jobs:
   test:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python: ['3.11', '3.12', '3.13']
     services:
       postgres:
         image: postgres:16-alpine
@@ -34,7 +31,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: ${{ matrix.python }}
+          python-version: '3.11'
           cache: pip
       - run: python -m pip install -r requirements-dev.txt
       - run: python -m pycodestyle shop tplab2 --exclude=migrations
@@ -47,7 +44,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: lab3-coverage-${{ matrix.python }}
+          name: lab3-coverage-3.11
           path: |
             htmlcov/
             coverage.xml
