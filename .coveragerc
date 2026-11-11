@@ -4,6 +4,8 @@ branch = True
 omit =
     */migrations/*
     */tests/*
+    # Demo data initialization is outside the application test suite.
+    */management/commands/bootstrap_demo.py
 [report]
 show_missing = True
 fail_under = 95
